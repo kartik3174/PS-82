@@ -6,52 +6,15 @@ interface SimulatorProps {
   setShips: React.Dispatch<React.SetStateAction<any[]>>;
   addHistory: (event: any) => void;
   addAlert: (alert: any) => void;
+  isSimulating: boolean;
+  setIsSimulating: (val: boolean) => void;
 }
 
-const Simulator: React.FC<SimulatorProps> = ({ ships, setShips, addHistory, addAlert }) => {
-  const [isSimulating, setIsSimulating] = useState(false);
+const Simulator: React.FC<SimulatorProps> = ({ ships, setShips, addHistory, addAlert, isSimulating, setIsSimulating }) => {
   const [prediction, setPrediction] = useState<any>(null);
   const [selectedShipId, setSelectedShipId] = useState<string | null>(ships[0]?.id || null);
 
   const selectedShip = ships.find(s => s.id === selectedShipId);
-
-  useEffect(() => {
-    let interval: any;
-    if (isSimulating) {
-      interval = setInterval(() => {
-        setShips(prevShips => prevShips.map(ship => {
-          // Update position based on speed and heading
-          const speedFactor = 0.001; // Scale for simulation speed
-          const headingRad = (ship.heading * Math.PI) / 180;
-          
-          let newLat = ship.lat + (ship.speed * speedFactor * Math.cos(headingRad));
-          let newLon = ship.lon + (ship.speed * speedFactor * Math.sin(headingRad));
-
-          // Random events
-          let newSpeed = ship.speed;
-          let newHeading = ship.heading;
-          let newStatus = ship.status;
-          let newRiskScore = ship.riskScore;
-
-          const random = Math.random();
-          if (random < 0.05) { // 5% chance of event
-            const eventType = Math.floor(Math.random() * 3);
-            if (eventType === 0) { // Sudden stop
-              newSpeed = 2;
-              addAlert({ id: Date.now(), shipName: ship.name, type: 'Suspicious Stop', severity: 'MEDIUM', timestamp: new Date().toLocaleTimeString() });
-              addHistory({ shipName: ship.name, action: 'Sudden deceleration', type: 'Movement', timestamp: new Date().toLocaleTimeString(), status: 'Warning' });
-            } else if (eventType === 1) { // Route deviation
-              newHeading = (ship.heading + 45) % 360;
-              addHistory({ shipName: ship.name, action: 'Course deviation', type: 'Navigation', timestamp: new Date().toLocaleTimeString(), status: 'Safe' });
-            }
-          }
-
-          return { ...ship, lat: newLat, lon: newLon, speed: newSpeed, heading: newHeading, status: newStatus, riskScore: newRiskScore };
-        }));
-      }, 2000);
-    }
-    return () => clearInterval(interval);
-  }, [isSimulating, setShips, addAlert, addHistory]);
 
   const handlePredict = async () => {
     if (!selectedShip) return;

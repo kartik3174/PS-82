@@ -8,13 +8,28 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// Mock Ship Data
-let ships = [
-  { id: 'S-101', name: 'Ever Given', lat: 12.5, lon: 80.5, speed: 12, heading: 45, status: 'Safe', riskScore: 10 },
-  { id: 'S-102', name: 'Blue Whale', lat: 13.0, lon: 81.0, speed: 8, heading: 180, status: 'Safe', riskScore: 15 },
-  { id: 'S-103', name: 'Ocean Nomad', lat: 12.2, lon: 80.2, speed: 4, heading: 90, status: 'Suspicious', riskScore: 75 },
-  { id: 'S-104', name: 'Arctic Star', lat: 13.8, lon: 80.8, speed: 15, heading: 270, status: 'Safe', riskScore: 5 },
+// Mock Ship Data - Generating ships only in water zones (Arabian Sea, Bay of Bengal, Indian Ocean)
+const shipNames = ['Ever Given', 'Blue Whale', 'Ocean Nomad', 'Arctic Star', 'Sea Spirit', 'Marine Voyager', 'Pacific Queen', 'Atlantic King', 'Global Trader', 'Wave Runner', 'Deep Sea', 'Horizon', 'Starlight', 'Poseidon', 'Neptune', 'Titan', 'Explorer', 'Navigator', 'Discovery', 'Endeavour'];
+
+const WATER_ZONES = [
+  { lat: [5, 22], lon: [60, 72] },  // Arabian Sea
+  { lat: [5, 20], lon: [82, 95] },  // Bay of Bengal
+  { lat: [-5, 5], lon: [60, 95] }   // Central Indian Ocean
 ];
+
+let ships = shipNames.map((name, i) => {
+  const zone = WATER_ZONES[i % WATER_ZONES.length];
+  return {
+    id: `S-${100 + i}`,
+    name: name,
+    lat: zone.lat[0] + Math.random() * (zone.lat[1] - zone.lat[0]),
+    lon: zone.lon[0] + Math.random() * (zone.lon[1] - zone.lon[0]),
+    speed: 5 + Math.random() * 15,
+    heading: Math.floor(Math.random() * 360),
+    status: 'Safe',
+    riskScore: Math.floor(Math.random() * 30)
+  };
+});
 
 const RESTRICTED_ZONE = [
   [12.0, 80.0],

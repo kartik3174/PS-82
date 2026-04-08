@@ -54,8 +54,8 @@ const Dashboard: React.FC<DashboardProps> = ({ ships }) => {
             <Activity className="text-blue-500" size={20} />
             <h3 className="text-lg font-bold text-white">Ship Activity (24h)</h3>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 w-full min-h-[256px]">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={data}>
                 <defs>
                   <linearGradient id="colorActivity" x1="0" y1="0" x2="0" y2="1">
@@ -78,8 +78,8 @@ const Dashboard: React.FC<DashboardProps> = ({ ships }) => {
 
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
           <h3 className="text-lg font-bold text-white mb-6">Risk Distribution</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 w-full min-h-[256px]">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={[
                 { name: 'Safe', count: safeShips },
                 { name: 'Warning', count: ships.filter(s => s.status === 'Warning').length },
