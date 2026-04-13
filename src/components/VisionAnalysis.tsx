@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Search, ShieldAlert, Droplets } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { detectShipsInImage, detectOilSpill } from '../services/visionService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { detectShipsInImage, detectOilSpill } from '@/services/visionService';
 import { toast } from 'sonner';
 
 const VisionAnalysis: React.FC = () => {

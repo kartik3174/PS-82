@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react';
 import L from 'leaflet';
 import { X, MapPin } from 'lucide-react';
-import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
-import Map from './components/Map';
-import Simulator from './components/Simulator';
-import Alerts from './components/Alerts';
-import History from './components/History';
-import VisionAnalysis from './components/VisionAnalysis';
-import CommunityReports from './components/CommunityReports';
-import VoiceControl from './components/VoiceControl';
-import { Toaster } from './components/ui/sonner';
+import Sidebar from '@/components/Sidebar';
+import Dashboard from '@/components/Dashboard';
+import Map from '@/components/Map';
+import Simulator from '@/components/Simulator';
+import Alerts from '@/components/Alerts';
+import History from '@/components/History';
+import VisionAnalysis from '@/components/VisionAnalysis';
+import CommunityReports from '@/components/CommunityReports';
+import VoiceControl from '@/components/VoiceControl';
+import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
-import { auth, db } from './lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { io } from 'socket.io-client';
-import { analyzeVesselBehavior } from './services/aiService';
+import { analyzeVesselBehavior } from '@/services/aiService';
 
 const socket = io();
 
