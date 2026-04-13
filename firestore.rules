@@ -30,8 +30,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "kartiksingh258012@gmail.com" && request.auth.token.email_verified == true));
+        (request.auth.token.email == "kartiksingh258012@gmail.com" && request.auth.token.email_verified == true);
     }
 
     function isCoastGuard() {
@@ -60,23 +59,24 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data) && request.resource.data.role == 'public';
+      allow create: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data) && 
+                    (request.resource.data.role == 'public' || isAdmin());
       allow update: if isAdmin() || (isOwner(uid) && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
     }
 
     match /vessels/{vesselId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isCoastGuard();
     }
 
     match /alerts/{alertId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isCoastGuard();
     }
 
     match /reports/{reportId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAuthenticated() && isValidReport(request.resource.data);
       allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == resource.data.reporterUid && request.resource.data.status == resource.data.status);
       allow delete: if isAdmin();

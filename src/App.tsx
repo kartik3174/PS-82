@@ -40,22 +40,27 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userDoc.exists()) {
-          setUserRole(userDoc.data().role);
-        } else {
-          // New user registration
-          const newRole = currentUser.email === 'kartiksingh258012@gmail.com' ? 'admin' : 'public';
-          await setDoc(doc(db, 'users', currentUser.uid), {
-            uid: currentUser.uid,
-            email: currentUser.email,
-            displayName: currentUser.displayName,
-            role: newRole,
-            createdAt: new Date().toISOString()
-          });
-          setUserRole(newRole);
+        try {
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userDoc.exists()) {
+            setUserRole(userDoc.data().role);
+          } else {
+            // New user registration
+            const newRole = currentUser.email === 'kartiksingh258012@gmail.com' ? 'admin' : 'public';
+            await setDoc(doc(db, 'users', currentUser.uid), {
+              uid: currentUser.uid,
+              email: currentUser.email,
+              displayName: currentUser.displayName,
+              role: newRole,
+              createdAt: new Date().toISOString()
+            });
+            setUserRole(newRole);
+          }
+          toast.success(`Welcome back, ${currentUser.displayName || 'User'}`);
+        } catch (error) {
+          console.error("Firestore Auth Error:", error);
+          toast.error("Failed to sync user profile. Please check permissions.");
         }
-        toast.success(`Welcome back, ${currentUser.displayName || 'User'}`);
       }
     });
     return () => unsubscribe();
