@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Search, ShieldAlert, Droplets } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { detectShipsInImage, detectOilSpill } from '../services/visionService';
 import { toast } from 'sonner';

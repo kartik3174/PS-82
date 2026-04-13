@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Map as MapIcon, Play, Bell, History, Shield, Eye, MessageSquare, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { auth, googleProvider } from '../lib/firebase';
 import { signInWithPopup, signOut, User } from 'firebase/auth';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 

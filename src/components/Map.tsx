@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import { MousePointer2, Square, Trash2, Navigation, Activity, Shield, Zap, ChevronRight, Clock, Target, Info, X, Gauge, Compass, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { analyzeVesselBehavior } from '../services/aiService';
 import { toast } from 'sonner';
 

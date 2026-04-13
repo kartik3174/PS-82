@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Camera, MapPin, Send, AlertCircle } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
