@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user with role-based access",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "coast_guard", "researcher", "public"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Vessel": {
+      "title": "Vessel",
+      "description": "Maritime vessel tracking data",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "lat": { "type": "number" },
+        "lon": { "type": "number" },
+        "speed": { "type": "number" },
+        "heading": { "type": "number" },
+        "status": { "type": "string", "enum": ["Safe", "Warning", "Suspicious"] },
+        "riskScore": { "type": "number" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "lat", "lon"]
+    },
+    "Alert": {
+      "title": "Alert",
+      "description": "Security or environmental alert",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "vesselId": { "type": "string" },
+        "type": { "type": "string" },
+        "severity": { "type": "string", "enum": ["Low", "Medium", "High", "Critical"] },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lon": { "type": "number" }
+          }
+        }
+      },
+      "required": ["id", "type", "severity", "timestamp"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Community reported suspicious activity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "reporterUid": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "lat": { "type": "number" },
+        "lon": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "reporterUid", "title", "lat", "lon"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles and roles"
+    },
+    "/vessels/{vesselId}": {
+      "schema": "Vessel",
+      "description": "Live vessel positions"
+    },
+    "/alerts/{alertId}": {
+      "schema": "Alert",
+      "description": "Security alerts"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Community reports"
+    }
+  }
+}

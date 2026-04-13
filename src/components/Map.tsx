@@ -4,6 +4,10 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import { MousePointer2, Square, Trash2, Navigation, Activity, Shield, Zap, ChevronRight, Clock, Target, Info, X, Gauge, Compass, RefreshCw } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { Button } from './ui/button';
+import { analyzeVesselBehavior } from '../services/aiService';
+import { toast } from 'sonner';
 
 // Fix for default marker icons in Leaflet with React
 const markerIcon = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
@@ -58,6 +62,7 @@ interface MapProps {
   trails?: Record<string, { pos: [number, number], status: string }[]>;
   onAreaSelect?: (bounds: L.LatLngBounds | null) => void;
   selectedArea?: L.LatLngBounds | null;
+  setActiveTab?: (tab: string) => void;
 }
 
 const RESTRICTED_ZONE: [number, number][] = [
@@ -167,18 +172,28 @@ const MapClickHandler: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   return null;
 };
 
-const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedArea }) => {
+const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedArea, setActiveTab }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
   const [prediction, setPrediction] = useState<any>(null);
+  const [pendingArea, setPendingArea] = useState<L.LatLngBounds | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const selectedShip = ships.find(s => s.id === selectedShipId);
+
+  const areaShips = pendingArea 
+    ? ships.filter(ship => pendingArea.contains([ship.lat, ship.lon]))
+    : [];
+
+  const avgSpeed = areaShips.length > 0
+    ? (areaShips.reduce((acc, s) => acc + s.speed, 0) / areaShips.length).toFixed(1)
+    : 0;
 
   useEffect(() => {
     if (selectedShipId && selectedShip) {
       const fetchPrediction = async () => {
         try {
-          const response = await fetch('/api/predict-future', {
+          const response = await fetch('/api/ships/predict-future', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -200,6 +215,23 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
     }
   }, [selectedShipId, selectedShip?.lat, selectedShip?.lon]);
 
+  const handleAnalyze = async () => {
+    if (!selectedShip) return;
+    setIsAnalyzing(true);
+    try {
+      const result = await analyzeVesselBehavior(selectedShip);
+      if (result) {
+        toast.success(`AI Analysis Complete for ${selectedShip.name}`, {
+          description: result.reasoning
+        });
+      }
+    } catch (error) {
+      toast.error("AI Analysis failed");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   return (
     <div className="h-full w-full relative">
       <MapContainer 
@@ -216,8 +248,10 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
         <MapClickHandler onClick={() => setSelectedShipId(null)} />
 
         <SelectionHandler isSelecting={isSelecting} onSelect={(bounds) => {
-          if (onAreaSelect) onAreaSelect(bounds);
-          if (bounds) setIsSelecting(false);
+          if (bounds) {
+            setPendingArea(bounds);
+            setIsSelecting(false);
+          }
         }} />
 
         {selectedArea && (
@@ -446,18 +480,67 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
 
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-2 pt-2">
-              <button className="flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all border border-slate-700">
+              <button 
+                onClick={() => setActiveTab?.('history')}
+                className="flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all border border-slate-700"
+              >
                 <Activity size={14} />
                 History
               </button>
-              <button className="flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-900/20">
-                <Zap size={14} />
+              <button 
+                onClick={handleAnalyze}
+                disabled={isAnalyzing}
+                className="flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
+              >
+                {isAnalyzing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
                 Analyze
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Area Selection Confirmation Dialog */}
+      <Dialog open={!!pendingArea} onOpenChange={(open) => !open && setPendingArea(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white">
+          <DialogHeader>
+            <DialogTitle>Confirm Area Selection</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              You have selected a maritime region. Here are the real-time statistics for this area.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 text-center">
+              <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Vessels Detected</p>
+              <p className="text-3xl font-bold text-white">{areaShips.length}</p>
+            </div>
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 text-center">
+              <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Avg Fleet Speed</p>
+              <p className="text-3xl font-bold text-white">{avgSpeed} <span className="text-sm font-normal text-slate-500">kn</span></p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setPendingArea(null)}
+              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (onAreaSelect) onAreaSelect(pendingArea);
+                setPendingArea(null);
+              }}
+              className="bg-blue-600 hover:bg-blue-500"
+            >
+              Confirm Selection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="absolute bottom-6 right-6 bg-slate-900/90 backdrop-blur border border-slate-800 p-4 rounded-xl z-[1000] shadow-2xl">
         <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Map Legend</h4>

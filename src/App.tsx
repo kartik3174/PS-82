@@ -7,6 +7,18 @@ import Map from './components/Map';
 import Simulator from './components/Simulator';
 import Alerts from './components/Alerts';
 import History from './components/History';
+import VisionAnalysis from './components/VisionAnalysis';
+import CommunityReports from './components/CommunityReports';
+import VoiceControl from './components/VoiceControl';
+import { Toaster } from './components/ui/sonner';
+import { toast } from 'sonner';
+import { auth, db } from './lib/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { io } from 'socket.io-client';
+import { analyzeVesselBehavior } from './services/aiService';
+
+const socket = io();
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -16,10 +28,50 @@ export default function App() {
   const [shipTrails, setShipTrails] = useState<Record<string, { pos: [number, number], status: string }[]>>({});
   const [isSimulating, setIsSimulating] = useState(false);
   const [selectedArea, setSelectedArea] = useState<L.LatLngBounds | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<string>('public');
 
   const selectedAreaShips = selectedArea 
     ? ships.filter(ship => selectedArea.contains([ship.lat, ship.lon]))
     : [];
+
+  // Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          setUserRole(userDoc.data().role);
+        } else {
+          // New user registration
+          const newRole = currentUser.email === 'kartiksingh258012@gmail.com' ? 'admin' : 'public';
+          await setDoc(doc(db, 'users', currentUser.uid), {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName,
+            role: newRole,
+            createdAt: new Date().toISOString()
+          });
+          setUserRole(newRole);
+        }
+        toast.success(`Welcome back, ${currentUser.displayName || 'User'}`);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Socket.io Real-time updates
+  useEffect(() => {
+    socket.on('vessel_update', (data) => {
+      // In a real app, this would update ship positions from the server
+      // For demo, we'll just log it
+      console.log('Real-time telemetry received:', data);
+    });
+    return () => {
+      socket.off('vessel_update');
+    };
+  }, []);
 
   // Track ship trails
   useEffect(() => {
@@ -29,10 +81,8 @@ export default function App() {
         const currentTrail = newTrails[ship.id] || [];
         const lastPosEntry = currentTrail[currentTrail.length - 1];
         
-        // Only add if position changed significantly to avoid duplicates
         if (!lastPosEntry || lastPosEntry.pos[0] !== ship.lat || lastPosEntry.pos[1] !== ship.lon) {
           const updatedTrail = [...currentTrail, { pos: [ship.lat, ship.lon] as [number, number], status: ship.status }];
-          // Keep only last 10 positions as requested
           newTrails[ship.id] = updatedTrail.slice(-10);
         }
       });
@@ -46,18 +96,16 @@ export default function App() {
     if (isSimulating) {
       interval = setInterval(() => {
         setShips(prevShips => prevShips.map(ship => {
-          // Update position based on speed and heading
-          const speedFactor = 0.001; // Scale for simulation speed
+          const speedFactor = 0.001;
           const headingRad = (ship.heading * Math.PI) / 180;
           
           let newLat = ship.lat + (ship.speed * speedFactor * Math.cos(headingRad));
           let newLon = ship.lon + (ship.speed * speedFactor * Math.sin(headingRad));
 
-          // Water Boundary Check (Keep ships in water)
           const WATER_ZONES = [
-            { lat: [5, 22], lon: [60, 72] },  // Arabian Sea
-            { lat: [5, 20], lon: [82, 95] },  // Bay of Bengal
-            { lat: [-5, 5], lon: [60, 95] }   // Central Indian Ocean
+            { lat: [5, 22], lon: [60, 72] },
+            { lat: [5, 20], lon: [82, 95] },
+            { lat: [-5, 5], lon: [60, 95] }
           ];
 
           const isInWater = WATER_ZONES.some(zone => 
@@ -67,38 +115,49 @@ export default function App() {
 
           let newHeading = ship.heading;
           if (!isInWater) {
-            // Turn around if hitting land/boundary
             newHeading = (ship.heading + 180) % 360;
-            // Recalculate position with new heading to avoid getting stuck
             const newHeadingRad = (newHeading * Math.PI) / 180;
             newLat = ship.lat + (ship.speed * speedFactor * Math.cos(newHeadingRad));
             newLon = ship.lon + (ship.speed * speedFactor * Math.sin(newHeadingRad));
           }
 
-          // Random events
-          let newSpeed = ship.speed;
-          let newStatus = ship.status;
-          let newRiskScore = ship.riskScore;
-
-          const random = Math.random();
-          if (random < 0.05) { // 5% chance of event
-            const eventType = Math.floor(Math.random() * 3);
-            if (eventType === 0) { // Sudden stop
-              newSpeed = 2;
-              addAlert({ id: Date.now(), shipName: ship.name, type: 'Suspicious Stop', severity: 'MEDIUM', timestamp: new Date().toLocaleTimeString() });
-              addHistory({ shipName: ship.name, action: 'Sudden deceleration', type: 'Movement', timestamp: new Date().toLocaleTimeString(), status: 'Warning' });
-            } else if (eventType === 1) { // Route deviation
-              newHeading = (ship.heading + 45) % 360;
-              addHistory({ shipName: ship.name, action: 'Course deviation', type: 'Navigation', timestamp: new Date().toLocaleTimeString(), status: 'Safe' });
-            }
-          }
-
-          return { ...ship, lat: newLat, lon: newLon, speed: newSpeed, heading: newHeading, status: newStatus, riskScore: newRiskScore };
+          return { ...ship, lat: newLat, lon: newLon, heading: newHeading };
         }));
       }, 2000);
     }
     return () => clearInterval(interval);
   }, [isSimulating]);
+
+  // AI Analysis Effect
+  useEffect(() => {
+    if (!isSimulating || ships.length === 0) return;
+
+    const runAIAnalysis = async () => {
+      const suspiciousShips = ships.filter(s => s.speed < 3 || s.riskScore > 50);
+      if (suspiciousShips.length === 0) return;
+
+      // Analyze the most suspicious ship to save API quota
+      const targetShip = suspiciousShips[0];
+      const analysis = await analyzeVesselBehavior(targetShip);
+      
+      if (analysis) {
+        setShips(prev => prev.map(s => s.id === targetShip.id ? { ...s, ...analysis } : s));
+        if (analysis.status === 'Suspicious') {
+          addAlert({
+            id: Date.now(),
+            shipName: targetShip.name,
+            type: 'AI: Suspicious Behavior',
+            severity: 'HIGH',
+            timestamp: new Date().toLocaleTimeString(),
+            reasoning: analysis.reasoning
+          });
+        }
+      }
+    };
+
+    const interval = setInterval(runAIAnalysis, 15000); // AI check every 15s
+    return () => clearInterval(interval);
+  }, [isSimulating, ships.length]);
 
   useEffect(() => {
     const fetchShips = async () => {
@@ -113,64 +172,25 @@ export default function App() {
     fetchShips();
   }, []);
 
-  // Real-time analysis during simulation
-  useEffect(() => {
-    if (!isSimulating) return;
-
-    const analyzeShips = async () => {
-      try {
-        const updatedShips = await Promise.all(ships.map(async (ship) => {
-          try {
-            const response = await fetch('/api/analyze', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ship })
-            });
-            const data = await response.json();
-            
-            // Handle alerts
-            if (data.alerts && data.alerts.length > 0) {
-              data.alerts.forEach((a: any) => {
-                const alertExists = alerts.some(existing => 
-                  existing.type === a.type && 
-                  existing.shipName === ship.name && 
-                  (Date.now() - new Date(existing.timestamp).getTime()) < 10000
-                );
-                if (!alertExists) {
-                  setAlerts(prev => [{ ...a, id: Date.now() + Math.random(), shipName: ship.name }, ...prev]);
-                }
-              });
-            }
-
-            return { ...ship, status: data.status, riskScore: data.riskScore };
-          } catch (error) {
-            return ship;
-          }
-        }));
-        
-        // Check if anything actually changed before updating state
-        const hasChanged = updatedShips.some((ship, i) => 
-          ship.status !== ships[i]?.status || ship.riskScore !== ships[i]?.riskScore
-        );
-
-        if (hasChanged) {
-          setShips(updatedShips);
-        }
-      } catch (error) {
-        console.error("Analysis failed", error);
-      }
-    };
-
-    const interval = setInterval(analyzeShips, 5000); // Analyze every 5 seconds
-    return () => clearInterval(interval);
-  }, [isSimulating, ships.length, alerts.length]); // Only re-run if simulation state or counts change
-
   const addHistory = (event: any) => {
     setHistory(prev => [event, ...prev]);
   };
 
   const addAlert = (alert: any) => {
     setAlerts(prev => [alert, ...prev]);
+    toast.warning(`Security Alert: ${alert.shipName} - ${alert.type}`, {
+      description: alert.reasoning || alert.message
+    });
+  };
+
+  const handleVoiceCommand = (command: string) => {
+    if (command.includes('map')) setActiveTab('map');
+    else if (command.includes('dashboard')) setActiveTab('dashboard');
+    else if (command.includes('alert')) setActiveTab('alerts');
+    else if (command.includes('vision')) setActiveTab('vision');
+    else if (command.includes('report')) setActiveTab('reports');
+    else if (command.includes('simulate')) setIsSimulating(true);
+    else if (command.includes('stop')) setIsSimulating(false);
   };
 
   const renderContent = () => {
@@ -183,6 +203,7 @@ export default function App() {
             trails={shipTrails} 
             onAreaSelect={setSelectedArea}
             selectedArea={selectedArea}
+            setActiveTab={setActiveTab}
           />
           {selectedArea && (
             <div className="absolute top-6 right-6 z-[1000] bg-slate-900/95 backdrop-blur border border-slate-800 p-6 rounded-2xl shadow-2xl w-80 animate-in slide-in-from-right-4 duration-300">
@@ -214,22 +235,6 @@ export default function App() {
                     </p>
                   </div>
                 </div>
-
-                {selectedAreaShips.length > 0 && (
-                  <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
-                    {selectedAreaShips.map(ship => (
-                      <div key={ship.id} className="flex items-center justify-between p-2 bg-slate-800/30 rounded-lg border border-slate-700/50">
-                        <span className="text-sm font-medium text-slate-300">{ship.name}</span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                          ship.status === 'Suspicious' ? 'bg-red-500/20 text-red-400' : 
-                          ship.status === 'Warning' ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400'
-                        }`}>
-                          {ship.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -238,16 +243,20 @@ export default function App() {
       case 'simulator': return <Simulator ships={ships} setShips={setShips} addHistory={addHistory} addAlert={addAlert} isSimulating={isSimulating} setIsSimulating={setIsSimulating} />;
       case 'alerts': return <Alerts alerts={alerts} />;
       case 'history': return <History history={history} />;
+      case 'vision': return <VisionAnalysis />;
+      case 'reports': return <CommunityReports />;
       default: return <Dashboard ships={ships} />;
     }
   };
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200 font-sans overflow-hidden">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} userRole={userRole} />
       <main className="flex-1 overflow-y-auto relative">
         {renderContent()}
       </main>
+      <VoiceControl onCommand={handleVoiceCommand} />
+      <Toaster position="top-center" theme="dark" richColors />
     </div>
   );
 }

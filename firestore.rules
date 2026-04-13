@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, email, displayName, role (admin, coast_guard, researcher, public), createdAt
+    //
+    // Collection: vessels
+    // Fields: id, name, lat, lon, speed, heading, status, riskScore, lastUpdated
+    //
+    // Collection: alerts
+    // Fields: id, vesselId, type, severity, message, timestamp, location {lat, lon}
+    //
+    // Collection: reports
+    // Fields: id, reporterUid, title, description, imageUrl, lat, lon, status, timestamp
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "kartiksingh258012@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isCoastGuard() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coast_guard' || isAdmin());
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.role in ['admin', 'coast_guard', 'researcher', 'public'];
+    }
+
+    function isValidVessel(data) {
+      return data.keys().hasAll(['id', 'name', 'lat', 'lon']) &&
+             data.lat is number && data.lon is number;
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['id', 'reporterUid', 'title', 'lat', 'lon']) &&
+             data.reporterUid == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data) && request.resource.data.role == 'public';
+      allow update: if isAdmin() || (isOwner(uid) && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /vessels/{vesselId} {
+      allow read: if isAuthenticated();
+      allow write: if isCoastGuard();
+    }
+
+    match /alerts/{alertId} {
+      allow read: if isAuthenticated();
+      allow write: if isCoastGuard();
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidReport(request.resource.data);
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == resource.data.reporterUid && request.resource.data.status == resource.data.status);
+      allow delete: if isAdmin();
+    }
+  }
+}
