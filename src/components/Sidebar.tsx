@@ -12,9 +12,11 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   user: User | null;
   userRole: string;
+  isDemoMode: boolean;
+  setIsDemoMode: (mode: boolean) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, userRole }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, userRole, isDemoMode, setIsDemoMode }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'map', label: 'Live Map', icon: MapIcon },
@@ -97,6 +99,24 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, userRo
             Sign In
           </Button>
         )}
+
+        <div className="bg-slate-900/30 rounded-2xl p-4 border border-slate-800/30">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Demo Mode</p>
+            <button 
+              onClick={() => setIsDemoMode(!isDemoMode)}
+              className={`w-10 h-5 rounded-full transition-all relative ${isDemoMode ? 'bg-blue-600' : 'bg-slate-800'}`}
+            >
+              <motion.div 
+                animate={{ x: isDemoMode ? 20 : 2 }}
+                className="absolute top-1 left-0 w-3 h-3 bg-white rounded-full shadow-sm"
+              />
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-400 font-medium leading-tight">
+            {isDemoMode ? 'Accelerated simulation with auto-alerts enabled.' : 'Standard operational monitoring.'}
+          </p>
+        </div>
 
         <div className="bg-slate-900/30 rounded-2xl p-4 border border-slate-800/30">
           <div className="flex items-center justify-between mb-2">

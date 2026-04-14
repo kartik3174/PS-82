@@ -141,34 +141,36 @@ const Dashboard: React.FC<DashboardProps> = ({ ships, alerts }) => {
           </div>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 p-8 rounded-3xl">
+        <motion.div variants={itemVariants} className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 p-8 rounded-3xl flex flex-col">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-2 bg-rose-500/10 rounded-lg">
               <TrendingUp className="text-rose-500" size={20} />
             </div>
-            <h3 className="text-xl font-bold text-white">Risk Profile</h3>
+            <h3 className="text-xl font-bold text-white">Recent Intelligence</h3>
           </div>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[
-                { name: 'Safe', count: safeShips, color: '#10b981' },
-                { name: 'Warning', count: warningShips, color: '#f59e0b' },
-                { name: 'Critical', count: suspiciousShips, color: '#f43f5e' }
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} opacity={0.5} />
-                <XAxis dataKey="name" stroke="#475569" fontSize={11} tickLine={false} axisLine={false} dy={10} />
-                <YAxis stroke="#475569" fontSize={11} tickLine={false} axisLine={false} dx={-10} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px' }}
-                  cursor={{ fill: '#1e293b', opacity: 0.4 }}
-                />
-                <Bar dataKey="count" radius={[8, 8, 0, 0]} animationDuration={1500}>
-                  {[safeShips, warningShips, suspiciousShips].map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? '#10b981' : index === 1 ? '#f59e0b' : '#f43f5e'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+            {alerts.length > 0 ? (
+              alerts.slice(0, 5).map((alert, i) => (
+                <div key={i} className="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl space-y-2">
+                  <div className="flex justify-between items-start">
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      alert.severity === 'CRITICAL' ? 'bg-rose-500/20 text-rose-500' : 
+                      alert.severity === 'HIGH' ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-500'
+                    }`}>
+                      {alert.severity}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">{alert.timestamp}</span>
+                  </div>
+                  <p className="text-xs font-bold text-white">{alert.type}</p>
+                  <p className="text-[10px] text-slate-400 line-clamp-1">{alert.shipName} – {alert.reasoning}</p>
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center space-y-2 opacity-50">
+                <ShieldCheck size={40} className="text-slate-700" />
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">No Active Threats</p>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

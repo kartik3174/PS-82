@@ -52,6 +52,7 @@ export default function App() {
   const [history, setHistory] = useState<any[]>([]);
   const [shipTrails, setShipTrails] = useState<Record<string, { pos: [number, number], status: string }[]>>({});
   const [isSimulating, setIsSimulating] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [selectedArea, setSelectedArea] = useState<L.LatLngBounds | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string>('public');
@@ -126,7 +127,7 @@ export default function App() {
     if (isSimulating) {
       interval = setInterval(() => {
         setShips(prevShips => prevShips.map(ship => {
-          const speedFactor = 0.001;
+          const speedFactor = isDemoMode ? 0.003 : 0.001;
           const headingRad = (ship.heading * Math.PI) / 180;
           
           let newLat = ship.lat + (ship.speed * speedFactor * Math.cos(headingRad));
@@ -151,12 +152,67 @@ export default function App() {
             newLon = ship.lon + (ship.speed * speedFactor * Math.sin(newHeadingRad));
           }
 
-          return { ...ship, lat: newLat, lon: newLon, heading: newHeading };
+          // Random heading drift
+          if (Math.random() > 0.95) {
+            newHeading = (newHeading + (Math.random() - 0.5) * 20) % 360;
+          }
+
+          // Dynamic Risk Calculation
+          let newRisk = ship.riskScore;
+          // Restricted Zone (approx 12.0-13.5, 80.0-81.5)
+          const inRestricted = newLat > 12.0 && newLat < 13.5 && newLon > 80.0 && newLon < 81.5;
+          
+          if (inRestricted) {
+            newRisk = Math.min(100, newRisk + (isDemoMode ? 10 : 2));
+          } else if (ship.speed > 25) {
+            newRisk = Math.min(100, newRisk + 1);
+          } else {
+            newRisk = Math.max(5, newRisk - 0.5);
+          }
+
+          // Auto-generate Alerts
+          if (newRisk > 85 && ship.riskScore <= 85) {
+            const alert = {
+              id: `AL-${Date.now()}`,
+              type: 'Restricted Zone Violation',
+              severity: 'CRITICAL',
+              shipName: ship.name,
+              timestamp: new Date().toLocaleTimeString(),
+              reasoning: 'Vessel entered high-security maritime corridor without authorization.'
+            };
+            addAlert(alert);
+            toast.error(`CRITICAL: ${ship.name} Security Breach!`, {
+              description: 'Vessel detected in restricted waters. Interception recommended.',
+              duration: 6000,
+            });
+          } else if (newRisk > 60 && ship.riskScore <= 60) {
+            const alert = {
+              id: `AL-${Date.now()}`,
+              type: 'Suspicious Maneuver',
+              severity: 'HIGH',
+              shipName: ship.name,
+              timestamp: new Date().toLocaleTimeString(),
+              reasoning: 'Sudden course deviation and speed increase detected by AI.'
+            };
+            addAlert(alert);
+            toast.warning(`HIGH RISK: ${ship.name} behavior flagged.`, {
+              description: 'AI analysis suggests potential illegal transshipment.',
+            });
+          }
+
+          return {
+            ...ship,
+            lat: newLat,
+            lon: newLon,
+            heading: newHeading,
+            riskScore: newRisk,
+            status: newRisk > 75 ? 'Suspicious' : newRisk > 40 ? 'Warning' : 'Safe'
+          };
         }));
       }, 2000);
     }
     return () => clearInterval(interval);
-  }, [isSimulating]);
+  }, [isSimulating, isDemoMode]);
 
   // AI Analysis Effect
   useEffect(() => {
@@ -319,7 +375,14 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200 font-sans overflow-hidden">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} userRole={userRole} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        user={user} 
+        userRole={userRole}
+        isDemoMode={isDemoMode}
+        setIsDemoMode={setIsDemoMode}
+      />
       <main className="flex-1 overflow-y-auto relative">
         {renderContent()}
       </main>

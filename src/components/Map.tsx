@@ -267,15 +267,35 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
           pathOptions={{ 
             color: '#ef4444', 
             fillColor: '#ef4444', 
-            fillOpacity: 0.2,
-            weight: 2,
-            dashArray: '5, 10'
+            fillOpacity: 0.15,
+            weight: 3,
+            dashArray: '10, 15'
           }}
         >
-          <LeafletTooltip permanent direction="center" className="bg-transparent border-none shadow-none text-red-500 font-bold text-xs uppercase">
-            Restricted Zone – Coast Guard Area
+          <LeafletTooltip permanent direction="center" className="bg-transparent border-none shadow-none text-red-500 font-black text-[10px] uppercase tracking-widest">
+            RESTRICTED ZONE Alpha-9
           </LeafletTooltip>
         </Polygon>
+
+        {/* Heatmap-like pulsing effect */}
+        <CircleMarker 
+          center={[12.75, 80.75]} 
+          radius={80} 
+          pathOptions={{ 
+            color: 'transparent', 
+            fillColor: '#ef4444', 
+            fillOpacity: 0.08 
+          }} 
+        />
+        <CircleMarker 
+          center={[12.75, 80.75]} 
+          radius={120} 
+          pathOptions={{ 
+            color: 'transparent', 
+            fillColor: '#ef4444', 
+            fillOpacity: 0.04 
+          }} 
+        />
 
         {/* Render Trails */}
         {(Object.entries(trails) as [string, { pos: [number, number], status: string }[]][]).map(([shipId, entries]) => {
@@ -414,6 +434,14 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
           </div>
 
           <div className="space-y-6">
+            <div className="flex items-center justify-between p-3 bg-blue-500/5 rounded-xl border border-blue-500/20">
+              <div className="flex items-center gap-2">
+                <Target size={14} className="text-blue-500" />
+                <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">AI Confidence</span>
+              </div>
+              <span className="text-xs font-black text-blue-500">94.2%</span>
+            </div>
+
             {/* Status & Risk */}
             <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700">
               <div className="flex items-center gap-3">
