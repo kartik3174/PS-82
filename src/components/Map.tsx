@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { analyzeVesselBehavior } from '@/services/aiService';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'motion/react';
 
 // Fix for default marker icons in Leaflet with React
 const markerIcon = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
@@ -362,7 +363,11 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
         ))}
       </MapContainer>
       
-      <div className="absolute top-6 left-20 z-[1000] flex gap-2">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="absolute top-6 left-20 z-[1000] flex gap-2"
+      >
         <button 
           onClick={() => setIsSelecting(!isSelecting)}
           className={`p-3 rounded-xl border transition-all flex items-center gap-2 font-bold text-sm ${
@@ -384,11 +389,17 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
             <Trash2 size={20} />
           </button>
         )}
-      </div>
+      </motion.div>
 
       {/* Ship Detail Panel */}
-      {selectedShip && (
-        <div className="absolute top-6 left-20 z-[1000] mt-16 bg-slate-900/95 backdrop-blur border border-slate-800 p-6 rounded-2xl shadow-2xl w-80 animate-in slide-in-from-left-4 duration-300">
+      <AnimatePresence>
+        {selectedShip && (
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="absolute top-6 left-20 z-[1000] mt-16 bg-slate-900/95 backdrop-blur border border-slate-800 p-6 rounded-2xl shadow-2xl w-80"
+          >
           <div className="flex justify-between items-start mb-6">
             <div>
               <h3 className="font-bold text-white text-lg leading-tight">{selectedShip.name}</h3>
@@ -497,8 +508,9 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* Area Selection Confirmation Dialog */}
       <Dialog open={!!pendingArea} onOpenChange={(open) => !open && setPendingArea(null)}>
@@ -542,7 +554,11 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
         </DialogContent>
       </Dialog>
 
-      <div className="absolute bottom-6 right-6 bg-slate-900/90 backdrop-blur border border-slate-800 p-4 rounded-xl z-[1000] shadow-2xl">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="absolute bottom-6 right-6 bg-slate-900/90 backdrop-blur border border-slate-800 p-4 rounded-xl z-[1000] shadow-2xl"
+      >
         <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Map Legend</h4>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -578,7 +594,7 @@ const Map: React.FC<MapProps> = ({ ships, trails = {}, onAreaSelect, selectedAre
             <span className="text-xs text-slate-300">Vessel Path Trail</span>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
