@@ -1,0 +1,10 @@
+{
+  "projectId": "seagaurd",
+  "appId": "1:451123356499:web:db67abb29a9ac6a9ca37a6",
+  "apiKey": "AIzaSyAYirYar7uNfz-fqmHrjE1z5EMdaNBXRRY",
+  "authDomain": "seagaurd.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "seagaurd.firebasestorage.app",
+  "messagingSenderId": "451123356499",
+  "measurementId": "G-Q8EBXWBLWG"
+}
