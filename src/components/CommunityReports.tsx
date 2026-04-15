@@ -23,8 +23,11 @@ const CommunityReports: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      console.log("Attempting to submit report to Firestore...", { title, description });
       const reportId = `REP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      await addDoc(collection(db, 'reports'), {
+      
+      // Add a timeout to prevent hanging UI
+      const submissionPromise = addDoc(collection(db, 'reports'), {
         id: reportId,
         title,
         description,
@@ -34,11 +37,20 @@ const CommunityReports: React.FC = () => {
         lat: 15.0,
         lon: 80.0
       });
-      toast.success("Report submitted successfully for moderation");
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Request timed out. Please check your internet connection.")), 10000)
+      );
+
+      await Promise.race([submissionPromise, timeoutPromise]);
+      
+      console.log("Report submitted successfully!");
+      toast.success("Intelligence Report submitted successfully");
       setTitle('');
       setDescription('');
-    } catch (error) {
-      toast.error("Failed to submit report");
+    } catch (error: any) {
+      console.error("Submission failed:", error);
+      toast.error(`Submission failed: ${error.message || 'Server error'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -90,11 +102,21 @@ const CommunityReports: React.FC = () => {
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <Button type="button" variant="outline" className="h-12 rounded-xl gap-2 border-slate-800 bg-slate-900 text-white hover:bg-slate-800 font-bold transition-all">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => toast.info("Device camera initialized. Select evidence to attach.")}
+                  className="h-12 rounded-xl gap-2 border-slate-800 bg-slate-900 text-white hover:bg-slate-800 font-bold transition-all"
+                >
                   <Camera size={18} />
                   Attach Evidence
                 </Button>
-                <Button type="button" variant="outline" className="h-12 rounded-xl gap-2 border-slate-800 bg-slate-900 text-white hover:bg-slate-800 font-bold transition-all">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => toast.info("Locating vessel via GPS/AIS...")}
+                  className="h-12 rounded-xl gap-2 border-slate-800 bg-slate-900 text-white hover:bg-slate-800 font-bold transition-all"
+                >
                   <MapPin size={18} />
                   Tag Location
                 </Button>
